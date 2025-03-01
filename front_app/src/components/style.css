@@ -1,0 +1,13 @@
+.login_container { text-align: center; margin-top: 50px; }
+.login_title { display: flex; align-items: center; justify-content: center; }
+.login_form { margin-top: 20px; }
+.chat_header { display: flex; justify-content: space-between; padding: 10px; background: #f0f0f0; }
+.chat_list { padding: 10px; max-height: 400px; overflow-y: auto; }
+.chat_sender, .chat_receiver { margin: 10px 0; display: flex; align-items: center; }
+.chat_sender { justify-content: flex-end; }
+.chat_sender img, .chat_receiver img { width: 40px; height: 40px; border-radius: 50%; margin: 0 10px; }
+.chat_sender p { background: #e0f7fa; padding: 10px; border-radius: 5px; }
+.chat_receiver p { background: #f1f1f1; padding: 10px; border-radius: 5px; }
+.inputtext_container { padding: 10px; }
+textarea { width: 80%; resize: none; }
+button { margin-left: 10px; padding: 5px 10px; }
