@@ -1,73 +1,95 @@
-import React, { useState, useEffect } from "react";
-import { FaComments } from "react-icons/fa";
-import ChatList from "./ChatList";
-import InputText from "./InputText";
-import UserLogin from "./UserLogin";
-import socketIOClient from "socket.io-client";
+import React, { useState, useEffect } from 'react';
+import { FaComments } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import ChatList from './ChatList';
+import InputText from './InputText';
+import socketIOClient from 'socket.io-client';
 
 const ChatContainer = () => {
-  const [user, setUser] = useState(localStorage.getItem("user"));
+  const [user, setUser] = useState(null);
   const [chats, setChats] = useState([]);
-  const socketio = socketIOClient("http://localhost:3001");
-  const room = "general";
+  const navigate = useNavigate();
+  const room = 'general';
 
   useEffect(() => {
-    if (user) {
-      socketio.emit("join_room", room);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
     }
 
-    socketio.on("initial_messages", (messages) => {
-      setChats(messages);
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/auth/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (data.username) {
+          setUser(data);
+        } else {
+          localStorage.removeItem('token');
+          navigate('/login');
+        }
+      } catch (error) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const socketio = socketIOClient('http://localhost:3001', {
+      query: { token: localStorage.getItem('token') },
     });
 
-    socketio.on("new_message", (newMessage) => {
+    socketio.on('connect_error', (err) => {
+      if (err.message === 'Authentication error') {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    });
+
+    socketio.emit('join_room', room);
+    socketio.on('initial_messages', (messages) => setChats(messages));
+    socketio.on('new_message', (newMessage) => {
       setChats((prevChats) => [...prevChats, newMessage]);
     });
 
-    return () => {
-      socketio.disconnect();
-    };
-  }, [user]);
+    return () => socketio.disconnect();
+  }, [user, navigate]);
 
   const addMessage = (message) => {
-    const newChat = {
-      room,
-      username: user,
-      avatar: localStorage.getItem("avatar"),
-      message,
-    };
-    socketio.emit("new_message", newChat);
+    const socketio = socketIOClient('http://localhost:3001', {
+      query: { token: localStorage.getItem('token') },
+    });
+    socketio.emit('new_message', { room, message });
   };
 
-  const Logout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("avatar");
+  const logout = () => {
+    localStorage.removeItem('token');
     setUser(null);
+    navigate('/login');
   };
+
+  if (!user) return <div>Loading...</div>;
 
   return (
     <div>
-      {user ? (
-        <div>
-          <div className="chat_header">
-            <h4>UserName: {user}</h4>
-            <p>
-              <FaComments className="chat_icon" /> 6950_chat_app
-            </p>
-            <p className="chat_logout" onClick={Logout}>
-              <strong>Logout</strong>
-            </p>
-          </div>
-          <ChatList chats={chats} user={user} />
-          <InputText addMessage={addMessage} />
-        </div>
-      ) : (
-        <UserLogin setUser={(username) => {
-          setUser(username);
-          localStorage.setItem("user", username);
-          localStorage.setItem("avatar", `https://picsum.photos/id/${Math.floor(Math.random() * 1000)}/200/300`);
-        }} />
-      )}
+      <div className="chat_header">
+        <h4>UserName: {user.username}</h4>
+        <p>
+          <FaComments className="chat_icon" /> 6950_chat_app
+        </p>
+        <p className="chat_logout" onClick={logout}>
+          <strong>Logout</strong>
+        </p>
+      </div>
+      <ChatList chats={chats} user={user.username} />
+      <InputText addMessage={addMessage} />
     </div>
   );
 };
