@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -13,15 +14,17 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// run hashing before saving password so database don't store the plain-text password
 userSchema.pre('save', async function (next) {
+  // hash password if new or updated
   if (this.isModified('password')) {
-    this.password = await bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(this.password, 10); // hash slinging slasher
   }
-  next();
+  next(); // save it to mongo
 });
 
-
-userSchema.methods.comparePassword = function (candidatePassword) {
+// check password method for comparison
+userSchema.methods.comparePassword = function (candidatePassword) { 
   return bcrypt.compare(candidatePassword, this.password);
 };
 

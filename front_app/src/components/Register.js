@@ -4,7 +4,7 @@ import { FaReact } from 'react-icons/fa6';
 import './style.css';
 
 const Register = () => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState({      // Track sign-up user information
     username: '',
     password: '',
     email: '',
@@ -13,13 +13,15 @@ const Register = () => {
     dob: '',
     gender: '',
   });
+
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({ ...form, [e.target.name]: e.target.value }); // dynamic form text handling
   };
 
   const handleRegister = async () => {
+    // send signup info to backend
     try {
       const response = await fetch('http://localhost:3001/auth/register', {
         method: 'POST',
@@ -27,14 +29,14 @@ const Register = () => {
         body: JSON.stringify(form),
       });
       const data = await response.json();
-      if (response.status === 201) {
+      if (response.status === 201) { // if signup successful
         alert('Registration successful');
         navigate('/login');
       } else {
-        alert(data.message || 'Registration failed');
+        alert(data.message || 'Registration failed'); // if not
       }
     } catch (error) {
-      console.error('Register error:', error);
+      console.error('Register error:', error); // other possible issues
       alert('An error occurred');
     }
   };

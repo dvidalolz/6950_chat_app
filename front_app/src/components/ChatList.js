@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { forwardRef } from 'react'; 
 
-const ChatList = ({ chats, user }) => {
+// chats and user passed from chatcontainer
+const ChatList = forwardRef(({ chats, user }, ref) => {
+
+  // Messages from you, right
   function SenderChat({ message, username, avatar }) {
     return (
       <div className="chat_sender">
@@ -13,6 +16,7 @@ const ChatList = ({ chats, user }) => {
     );
   }
 
+  // other peoples messages, left
   function ReceiverChat({ message, username, avatar }) {
     return (
       <div className="chat_receiver">
@@ -26,11 +30,11 @@ const ChatList = ({ chats, user }) => {
   }
 
   return (
-    <div className='chat_list'>
+    <div className="chat_list" ref={ref}> {}
       {chats.map((chat, index) => {
-        if (chat.username === user) {
+        if (chat.username === user) { 
           return (
-            <SenderChat
+            <SenderChat // display as senderchat if you sent
               key={index}
               message={chat.message}
               username={chat.username}
@@ -39,7 +43,7 @@ const ChatList = ({ chats, user }) => {
           );
         } else {
           return (
-            <ReceiverChat
+            <ReceiverChat // display as otherchat if someone else sent message
               key={index}
               message={chat.message}
               username={chat.username}
@@ -50,6 +54,6 @@ const ChatList = ({ chats, user }) => {
       })}
     </div>
   );
-};
+});
 
 export default ChatList;
