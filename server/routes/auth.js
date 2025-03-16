@@ -2,7 +2,21 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'your_jwt_secret'; 
+const JWT_SECRET = 'your_jwt_secret';
+
+// Middleware to authenticate requests using JWT
+const authenticate = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'No token provided' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = await User.findById(decoded.id);
+    if (!req.user) return res.status(404).json({ message: 'User not found' });
+    next();
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+};
 
 // sign up
 router.post('/register', async (req, res) => {
@@ -23,6 +37,7 @@ router.post('/register', async (req, res) => {
     await user.save(); // trigger pre-save hook (located User model bycrypt) for hashing
 
     res.status(201).json({ message: 'User created successfully' });
+
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -49,24 +64,34 @@ router.post('/login', async (req, res) => {
 });
 
 // get user info (protected route - only accessible with valid token)
-router.get('/profile', async (req, res) => {
+router.get('/profile', authenticate, async (req, res) => {
+  // Populate friends with username and avatar, exclude password from response
+  await req.user.populate('friends', 'username avatar');
+  const user = req.user.toObject();
+  delete user.password;
+  res.json(user);
+});
 
-  // Read authorization header, extract token
-  const token = req.headers.authorization?.split(' ')[1];
+// Search for a user by username (protected route)
+router.get('/search', authenticate, async (req, res) => {
+  const { username } = req.query;
+  if (!username) return res.status(400).json({ message: 'Username is required' });
+  const user = await User.findOne({ username }).select('username avatar');
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  res.json(user);
+});
 
-  // nogo
-  if (!token) return res.status(401).json({ message: 'No token provided' });
-
-  
-  try {
-    // validate token, find user by id stored in token, exclude password,
-    const decoded = jwt.verify(token, JWT_SECRET); 
-    const user = await User.findById(decoded.id).select('-password');
-    if (!user) return res.status(404).json({ message: 'User not found' }); // 404 if not found
-    res.json(user); // return usser profile
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
+// Add a friend by username (protected route)
+router.post('/add-friend', authenticate, async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ message: 'Username is required' });
+  if (username === req.user.username) return res.status(400).json({ message: 'Cannot add yourself as a friend' });
+  const friend = await User.findOne({ username });
+  if (!friend) return res.status(404).json({ message: 'User not found' });
+  if (req.user.friends.includes(friend._id)) return res.status(400).json({ message: 'Already friends' });
+  req.user.friends.push(friend._id);
+  await req.user.save();
+  res.json({ message: 'Friend added successfully' });
 });
 
 module.exports = router;
