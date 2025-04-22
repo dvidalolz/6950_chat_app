@@ -52,6 +52,60 @@
   background: #0056b3;
 }
 
+/* Chat Container (New) */
+.chat_container {
+  display: flex;
+  height: 100vh;
+  background: #f8f9fa;
+}
+
+/* Chat Rooms Sidebar (New) */
+.chat_rooms_sidebar {
+  width: 250px;
+  padding: 20px;
+  background: white;
+  border-right: 1px solid #dee2e6;
+  overflow-y: auto;
+}
+
+.chat_rooms_sidebar h3 {
+  margin: 0 0 15px 0;
+  color: #343a40;
+  font-size: 18px;
+}
+
+.chat_rooms_sidebar ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+}
+
+.chat_rooms_sidebar li {
+  padding: 10px;
+  background: #f8f9fa;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #343a40;
+}
+
+.chat_rooms_sidebar li:hover {
+  background: #e9ecef;
+}
+
+.chat_rooms_sidebar button {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+}
+
+/* Chat Main Area (New) */
+.chat_main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Chat Header */
 .chat_header {
   display: flex;
@@ -60,6 +114,30 @@
   padding: 15px;
   background: #f8f9fa;
   border-bottom: 1px solid #dee2e6;
+}
+
+/* User Info in Header */
+.user_info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user_info h4 {
+  margin: 0;
+}
+
+.chatroom_name {
+  font-size: 14px;
+  color: #6c757d; /* Muted gray for subtle emphasis */
+  margin: 0;
+}
+
+/* Header Buttons */
+.header_buttons {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 /* Chat Friends Button */
@@ -88,7 +166,7 @@
 /* Chat List */
 .chat_list {
   padding: 20px;
-  max-height: 600px;
+  flex: 1;
   overflow-y: auto;
   background: #f8f9fa;
 }
@@ -233,9 +311,70 @@ button:hover {
   border-radius: 5px;
   color: #343a40;
   display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
 .friends_list li:hover {
   background: #e9ecef;
+}
+
+.friends_list li button {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+/* Invite Friends Container (New) */
+.invite_friends {
+  margin: 15px 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #dee2e6;
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+}
+
+.invite_friends h3 {
+  margin: 0 0 15px 0;
+  color: #343a40;
+  font-size: 18px;
+}
+
+.invite_friends ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.invite_friends li {
+  padding: 10px;
+  background: #f8f9fa;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  color: #343a40;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.invite_friends li:hover {
+  background: #e9ecef;
+}
+
+.invite_friends li button {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.invite_friends button {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
 }

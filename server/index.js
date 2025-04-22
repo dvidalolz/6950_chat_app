@@ -9,7 +9,6 @@ const app = express();
 const server = http.createServer(app);
 const cors = require('cors'); // frontend backend talks with with (I was running into issues without this early on)
 
-
 // frontend connection
 app.use(cors({
   origin: 'http://localhost:3000', 
@@ -26,26 +25,21 @@ const io = socketIo(server, {
 
 app.use(express.json()); 
 app.use('/auth', require('./routes/auth')); // router imported and mounted
+app.use('/chatrooms', require('./routes/chatrooms')); // New router for chatrooms
 
 // connect to database
 const dbUri = process.env.DB_URI || 'mongodb://127.0.0.1/chat-app';
 mongoose.connect(dbUri).then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('Could not connect to MongoDB:', err));
 
-// how message is saved in database
-const Message = mongoose.model('Message', new mongoose.Schema({
-  room: String,
-  username: String,
-  avatar: String,
-  message: String,
-  timestamp: { type: Date, default: Date.now },
-}));
+// Models
+const Message = require('./models/Message');
+const ChatRoom = require('./models/ChatRoom');
 
 // Check the token before letting users chat
 io.use(async (socket, next) => {
   const token = socket.handshake.query.token;
   if (!token) return next(new Error('Authentication error'));
-
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await mongoose.model('User').findById(decoded.id);
@@ -61,24 +55,38 @@ io.use(async (socket, next) => {
 io.on('connection', (socket) => {
   console.log('New client connected');
 
-  // fetch messages from mongodb, sort, and send to front_app chatContainer (there's an emit join room in chatcontainer)
-  socket.on('join_room', async (room) => {
-    socket.join(room);
-    const messages = await Message.find({ room }).sort({ timestamp: -1 }).limit(100);
-    socket.emit('initial_messages', messages.reverse()); // send them old old messages
+  // fetch messages from mongodb, sort, and send to front_app chatContainer
+  socket.on('join_room', async (chatRoomId) => {
+    try {
+      const chatRoom = await ChatRoom.findById(chatRoomId);
+      if (!chatRoom) return socket.emit('error', 'Chat room not found');
+      if (!chatRoom.members.includes(socket.user._id)) return socket.emit('error', 'Not a member of this chat room');
+      socket.join(chatRoomId.toString());
+      const messages = await Message.find({ chatRoom: chatRoomId }).sort({ timestamp: -1 }).limit(100);
+      socket.emit('initial_messages', { chatRoomId, messages: messages.reverse() }); // send them old messages
+    } catch (error) {
+      socket.emit('error', 'Server error');
+    }
   });
 
   // when new messages come in
   socket.on('new_message', async (data) => { 
-    const { room, message } = data;
-    const newMessage = new Message({ // define structure of message
-      room,
-      username: socket.user.username,
-      avatar: socket.user.avatar,
-      message,
-    });
-    await newMessage.save(); // save it to mongo
-    io.to(room).emit('new_message', newMessage); // send to all
+    const { chatRoomId, message } = data;
+    try {
+      const chatRoom = await ChatRoom.findById(chatRoomId);
+      if (!chatRoom) return socket.emit('error', 'Chat room not found');
+      if (!chatRoom.members.includes(socket.user._id)) return socket.emit('error', 'Not a member of this chat room');
+      const newMessage = new Message({ // define structure of message
+        chatRoom: chatRoomId,
+        username: socket.user.username,
+        avatar: socket.user.avatar,
+        message,
+      });
+      await newMessage.save(); // save it to mongo
+      io.to(chatRoomId.toString()).emit('new_message', newMessage); // send to all
+    } catch (error) {
+      socket.emit('error', 'Server error');
+    }
   });
 
   socket.on('disconnect', () => console.log('Client disconnected'));
