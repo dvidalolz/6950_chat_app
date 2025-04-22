@@ -14,7 +14,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Create a new chat room
+// Create a new group chat room
 router.post('/', authenticate, async (req, res) => {
   try {
     const { name } = req.body;
@@ -23,6 +23,39 @@ router.post('/', authenticate, async (req, res) => {
       name,
       creator: req.user._id,
       members: [req.user._id]
+    });
+    await chatRoom.save();
+    const populatedChatRoom = await ChatRoom.findById(chatRoom._id).populate('members', 'username avatar');
+    res.status(201).json(populatedChatRoom);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create or get one-on-one chat room
+router.post('/one-on-one', authenticate, async (req, res) => {
+  try {
+    const { friendId } = req.body;
+    if (!friendId) return res.status(400).json({ message: 'Friend ID is required' });
+    const friend = await User.findById(friendId);
+    if (!friend) return res.status(404).json({ message: 'Friend not found' });
+    if (!req.user.friends.includes(friend._id)) return res.status(400).json({ message: 'Not friends with this user' });
+
+    // Check if a one-on-one chat room already exists
+    const existingChatRoom = await ChatRoom.findOne({
+      members: { $all: [req.user._id, friend._id] },
+      $expr: { $eq: [{ $size: "$members" }, 2] }
+    });
+
+    if (existingChatRoom) {
+      return res.json(existingChatRoom);
+    }
+
+    // Create a new one-on-one chat room
+    const chatRoom = new ChatRoom({
+      name: `Chat between ${req.user.username} and ${friend.username}`,
+      creator: req.user._id,
+      members: [req.user._id, friend._id]
     });
     await chatRoom.save();
     const populatedChatRoom = await ChatRoom.findById(chatRoom._id).populate('members', 'username avatar');

@@ -4,16 +4,11 @@ import { FaReact } from 'react-icons/fa6';
 import './style.css';
 
 const Login = () => {
-
-  // Track input for username and password
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-
-  // switch pages
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    // send username and password to backend to check if they exist
     try {
       const response = await fetch('http://localhost:3001/auth/login', {
         method: 'POST',
@@ -21,10 +16,8 @@ const Login = () => {
         body: JSON.stringify({ username, password }),
       });
       const data = await response.json();
-      if (data.token) { // If token retrieved, proceed to /. If not, errors
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', data.username);
-        localStorage.setItem('avatar', data.avatar);
+      if (data.token) {
+        sessionStorage.setItem('token', data.token);
         navigate('/');
       } else {
         alert(data.message || 'Login failed');
@@ -46,13 +39,13 @@ const Login = () => {
           type="text"
           placeholder="Username"
           value={username}
-          onChange={(e) => setUsername(e.target.value)} // update username as you type
+          onChange={(e) => setUsername(e.target.value)}
         />
         <input
           type="password"
           placeholder="Password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)} // update username as you type
+          onChange={(e) => setPassword(e.target.value)}
         />
         <button onClick={handleLogin}>Login</button>
         <p>

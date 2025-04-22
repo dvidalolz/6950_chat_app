@@ -11,17 +11,15 @@ const ChatContainer = () => {
   const [currentChatRoom, setCurrentChatRoom] = useState(null);
   const [messages, setMessages] = useState({});
   const navigate = useNavigate();
-  const chatListRef = useRef(null); // Automatic scrolling wasn't seeing the bottom
+  const chatListRef = useRef(null);
   const socketRef = useRef(null);
-  // Added states for friends list feature
   const [showFriends, setShowFriends] = useState(false);
   const [searchUsername, setSearchUsername] = useState('');
   const [searchResult, setSearchResult] = useState(null);
   const [showInvite, setShowInvite] = useState(false);
 
   useEffect(() => {
-    // check login key and send back if none
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (!token) {
       navigate('/login');
       return;
@@ -29,14 +27,12 @@ const ChatContainer = () => {
 
     const fetchProfile = async () => {
       try {
-        // send request to auth, save user info if yes, go back to login if none
         const response = await fetch('http://localhost:3001/auth/profile', {
-          headers: { Authorization: `Bearer ${token}` }, // Fulll send it bruv
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
         if (data.username) {
           setUser(data);
-          // Fetch chat rooms
           const chatRoomsResponse = await fetch('http://localhost:3001/chatrooms', {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -48,35 +44,32 @@ const ChatContainer = () => {
             }
           }
         } else {
-          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
           navigate('/login');
         }
       } catch (error) {
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         navigate('/login');
       }
     };
 
-    fetchProfile(); // run function once inside useEffect when component mounts 
+    fetchProfile();
   }, [navigate]);
 
   useEffect(() => {
     if (!user || chatRooms.length === 0) return;
 
-    // Connect to backend 
     socketRef.current = socketIOClient('http://localhost:3001', {
-      query: { token: localStorage.getItem('token') }, // send key
+      query: { token: sessionStorage.getItem('token') },
     });
 
-    // auth error, go back to login
     socketRef.current.on('connect_error', (err) => {
       if (err.message === 'Authentication error') {
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         navigate('/login');
       }
     });
 
-    // Join all chat rooms
     chatRooms.forEach(chatRoom => {
       socketRef.current.emit('join_room', chatRoom._id);
     });
@@ -100,7 +93,7 @@ const ChatContainer = () => {
 
   useEffect(() => {
     if (chatListRef.current) {
-      chatListRef.current.scrollTop = chatListRef.current.scrollHeight; // Scroll to the latest message
+      chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
     }
   }, [messages, currentChatRoom]);
 
@@ -111,14 +104,13 @@ const ChatContainer = () => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     setUser(null);
     navigate('/login');
   };
 
-  // Added function to search for a user by username
   const handleSearch = async () => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     try {
       const response = await fetch(`http://localhost:3001/auth/search?username=${searchUsername}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -136,9 +128,8 @@ const ChatContainer = () => {
     }
   };
 
-  // Added function to add a friend and refresh the profile
   const handleAddFriend = async (username) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:3001/auth/add-friend', {
         method: 'POST',
@@ -155,7 +146,7 @@ const ChatContainer = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         const profileData = await profileResponse.json();
-        setUser(profileData); // Update user state with new friends list
+        setUser(profileData);
         setSearchResult(null);
         setSearchUsername('');
       } else {
@@ -170,7 +161,7 @@ const ChatContainer = () => {
     const name = prompt('Enter chat room name:');
     if (!name) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const response = await fetch('http://localhost:3001/chatrooms', {
         method: 'POST',
         headers: {
@@ -194,7 +185,7 @@ const ChatContainer = () => {
 
   const handleInviteFriend = async (friendId) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const response = await fetch(`http://localhost:3001/chatrooms/${currentChatRoom._id}/invite`, {
         method: 'POST',
         headers: {
@@ -216,7 +207,7 @@ const ChatContainer = () => {
 
   const handleViewFriendChatRooms = async (friendId) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const response = await fetch(`http://localhost:3001/chatrooms/user/${friendId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -231,20 +222,54 @@ const ChatContainer = () => {
     }
   };
 
-  if (!user) return <div>Loading...</div>; // Bufferrriinnngggggg
+  const handleStartOneOnOneChat = async (friendId) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://localhost:3001/chatrooms/one-on-one', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ friendId }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (!chatRooms.some(cr => cr._id === data._id)) {
+          setChatRooms(prev => [...prev, data]);
+        }
+        setCurrentChatRoom(data);
+        socketRef.current.emit('join_room', data._id);
+      } else {
+        alert(data.message || 'Failed to start chat');
+      }
+    } catch (error) {
+      alert('An error occurred');
+    }
+  };
+
+  if (!user) return <div>Loading...</div>;
 
   return (
     <div className="chat_container">
       <div className="chat_rooms_sidebar">
-        <h3>Chat Rooms</h3>
+        <h3>Group Chats</h3>
         <ul>
-          {chatRooms.map(chatRoom => (
+          {chatRooms.filter(cr => cr.members.length > 2).map(chatRoom => (
             <li key={chatRoom._id} onClick={() => setCurrentChatRoom(chatRoom)}>
               {chatRoom.name}
             </li>
           ))}
         </ul>
-        <button onClick={handleCreateChatRoom}>Create New Chat Room</button>
+        <h3>Direct Messages</h3>
+        <ul>
+          {chatRooms.filter(cr => cr.members.length === 2).map(chatRoom => (
+            <li key={chatRoom._id} onClick={() => setCurrentChatRoom(chatRoom)}>
+              {chatRoom.members.find(m => m._id !== user._id).username}
+            </li>
+          ))}
+        </ul>
+        <button onClick={handleCreateChatRoom}>Create New Group Chat</button>
       </div>
       <div className="chat_main">
         <div className="chat_header">
@@ -264,7 +289,6 @@ const ChatContainer = () => {
             </p>
           </div>
         </div>
-        {/* Added friends list UI that appears when showFriends is true */}
         {showFriends && (
           <div className="friends_list">
             <h3>Friends List</h3>
@@ -294,6 +318,7 @@ const ChatContainer = () => {
                 user.friends.map((friend) => (
                   <li key={friend._id}>
                     {friend.username}
+                    <button onClick={() => handleStartOneOnOneChat(friend._id)}>Chat</button>
                     <button onClick={() => handleViewFriendChatRooms(friend._id)}>View Chat Rooms</button>
                   </li>
                 ))
